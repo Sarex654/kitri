@@ -157,7 +157,8 @@ injectBtn.AutoButtonColor = true
 injectBtn.ZIndex = 5
 
 injectBtn.MouseButton1Click:Connect(function()
-    print("[FalseHub] Inject clicked! Execute your script here.")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Sarex654/kitri/refs/heads/main/load.txt"))()
+    print("[FalseHub] Inject true")
     safeSendWebhook("Inject clicked by user.")
     showNotification("Inject executed successfully!", 3)
 end)
