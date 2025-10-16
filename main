@@ -1,0 +1,451 @@
+-- FalseHub UI для тестов (executor-friendly)
+-- Key: 123
+-- Замените webhookUrl на ваш Discord webhook или на "" чтобы отключить отправку.
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+
+local webhookUrl = "YOUR_WEBHOOK_URL_HERE" -- <- замените или оставьте "" чтобы отключить
+
+-- Параметры
+local KEY = "123"
+local UI_SCALE = 1 -- если нужно можно менять общий масштаб
+
+-- helper: безопасно отправить вебхук
+local function safeSendWebhook(text)
+    if webhookUrl == nil or webhookUrl == "" then return end
+    spawn(function()
+        local ok, err = pcall(function()
+            local data = { content = text }
+            local json = HttpService:JSONEncode(data)
+            HttpService:PostAsync(webhookUrl, json, Enum.HttpContentType.ApplicationJson)
+        end)
+        -- не критично если не удалось отправить
+    end)
+end
+
+-- Создаём контейнер (CoreGui предпочтительнее в executor среде)
+local parentGui = game:GetService("CoreGui") -- executor обычно разрешает этот
+-- если хотите использовать PlayerGui вместо CoreGui, замените на:
+-- local parentGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- Удаляем старые экземпляры с тем же именем (удобно при повторном запуске)
+for _, v in pairs(parentGui:GetChildren()) do
+    if v.Name == "FalseHub_ExecutorUI" then
+        v:Destroy()
+    end
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FalseHub_ExecutorUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = parentGui
+
+-- Функция для создания UICorner и простого оформления
+local function makeCorner(parent, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 8)
+    c.Parent = parent
+    return c
+end
+
+-- Фоновая тёмная панель (центр экрана)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 520 * UI_SCALE, 0, 320 * UI_SCALE)
+mainFrame.Position = UDim2.new(0.5, -260 * UI_SCALE, 0.5, -160 * UI_SCALE)
+mainFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+makeCorner(mainFrame, 14)
+
+-- Header
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 44 * UI_SCALE)
+header.Position = UDim2.new(0, 0, 0, 0)
+header.BackgroundColor3 = Color3.fromRGB(30,30,30)
+header.Parent = mainFrame
+makeCorner(header, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0.7, 0, 1, 0)
+title.Position = UDim2.new(0, 12 * UI_SCALE, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "FalseHub"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20 * UI_SCALE
+title.TextColor3 = Color3.fromRGB(230,230,230)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = header
+
+-- Minimize/Collapse button (иконка)
+local collapseBtn = Instance.new("TextButton")
+collapseBtn.Size = UDim2.new(0, 34 * UI_SCALE, 0, 30 * UI_SCALE)
+collapseBtn.Position = UDim2.new(1, -46 * UI_SCALE, 0, 7 * UI_SCALE)
+collapseBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+collapseBtn.Text = "—"
+collapseBtn.Font = Enum.Font.GothamBold
+collapseBtn.TextSize = 20 * UI_SCALE
+collapseBtn.TextColor3 = Color3.fromRGB(230,230,230)
+collapseBtn.Parent = header
+makeCorner(collapseBtn, 8)
+
+-- Close (optional) маленькая кнопка (можно убрать)
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 34 * UI_SCALE, 0, 30 * UI_SCALE)
+closeBtn.Position = UDim2.new(1, -90 * UI_SCALE, 0, 7 * UI_SCALE)
+closeBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+closeBtn.Text = "×"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 18 * UI_SCALE
+closeBtn.TextColor3 = Color3.fromRGB(230,230,230)
+closeBtn.Parent = header
+makeCorner(closeBtn, 8)
+
+-- Left panel (buttons)
+local leftPanel = Instance.new("Frame")
+leftPanel.Size = UDim2.new(0, 180 * UI_SCALE, 0, 276 * UI_SCALE)
+leftPanel.Position = UDim2.new(0, 12 * UI_SCALE, 0, 44 * UI_SCALE + 12 * UI_SCALE)
+leftPanel.BackgroundColor3 = Color3.fromRGB(45,45,45)
+leftPanel.Parent = mainFrame
+makeCorner(leftPanel, 12)
+
+-- Right panel (описание + inject)
+local rightPanel = Instance.new("Frame")
+rightPanel.Size = UDim2.new(1, -(12*2 + 180) * UI_SCALE, 0, 276 * UI_SCALE)
+rightPanel.Position = UDim2.new(0, 12 * UI_SCALE + 180 * UI_SCALE + 12 * UI_SCALE, 0, 44 * UI_SCALE + 12 * UI_SCALE)
+rightPanel.BackgroundColor3 = Color3.fromRGB(50,50,50)
+rightPanel.Parent = mainFrame
+makeCorner(rightPanel, 12)
+
+-- Description label
+local description = Instance.new("TextLabel")
+description.Size = UDim2.new(1, -20 * UI_SCALE, 0, 160 * UI_SCALE)
+description.Position = UDim2.new(0, 10 * UI_SCALE, 0, 10 * UI_SCALE)
+description.BackgroundTransparency = 1
+description.Text = "Select a script..."
+description.Font = Enum.Font.Gotham
+description.TextSize = 16 * UI_SCALE
+description.TextColor3 = Color3.fromRGB(220,220,220)
+description.TextWrapped = true
+description.TextXAlignment = Enum.TextXAlignment.Left
+description.TextYAlignment = Enum.TextYAlignment.Top
+description.Parent = rightPanel
+
+-- Inject button (появляется после выбора)
+local injectBtn = Instance.new("TextButton")
+injectBtn.Size = UDim2.new(0, 160 * UI_SCALE, 0, 36 * UI_SCALE)
+injectBtn.Position = UDim2.new(1, -170 * UI_SCALE, 1, -46 * UI_SCALE)
+injectBtn.AnchorPoint = Vector2.new(0,0)
+injectBtn.BackgroundColor3 = Color3.fromRGB(65,65,65)
+injectBtn.Text = "Inject"
+injectBtn.Font = Enum.Font.GothamBold
+injectBtn.TextSize = 16 * UI_SCALE
+injectBtn.TextColor3 = Color3.fromRGB(240,240,240)
+injectBtn.Visible = false
+injectBtn.Parent = rightPanel
+makeCorner(injectBtn, 10)
+
+-- Список кнопок слева
+local buttonsInfo = {
+    {Name = "Forsaken", Desc = "Forsaken — test description. This panel simulates selecting Forsaken."},
+    {Name = "Steal a Brainrot", Desc = "Steal a Brainrot — test description. Info about this script goes here."},
+    {Name = "MM2", Desc = "MM2 — Murder Mystery 2 related test stub. Use for UI testing."},
+    {Name = "99 Nights", Desc = "99 Nights — test description for the 99 Nights script."},
+}
+
+local leftButtons = {}
+for i, info in ipairs(buttonsInfo) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20 * UI_SCALE, 0, 42 * UI_SCALE)
+    btn.Position = UDim2.new(0, 10 * UI_SCALE, 0, (i-1) * (42 * UI_SCALE + 8 * UI_SCALE) + 10 * UI_SCALE)
+    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    btn.Text = info.Name
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14 * UI_SCALE
+    btn.TextColor3 = Color3.fromRGB(245,245,245)
+    btn.Parent = leftPanel
+    makeCorner(btn, 8)
+    leftButtons[#leftButtons+1] = btn
+
+    btn.MouseButton1Click:Connect(function()
+        -- Анимация изменения текста описания (плавная)
+        description.TextTransparency = 1
+        description.Text = info.Desc
+        TweenService:Create(description, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {TextTransparency = 0}):Play()
+
+        -- Показать Inject
+        if not injectBtn.Visible then
+            injectBtn.Visible = true
+            injectBtn.TextTransparency = 1
+            TweenService:Create(injectBtn, TweenInfo.new(0.25, Enum.EasingStyle.Back), {TextTransparency = 0}):Play()
+            injectBtn.BackgroundTransparency = 1
+            TweenService:Create(injectBtn, TweenInfo.new(0.25), {BackgroundTransparency = 0}):Play()
+        end
+
+        -- Отправляем в вебхук
+        safeSendWebhook("Button pressed: " .. info.Name)
+    end)
+end
+
+-- Ключевой ввод (модал)
+local keyOverlay = Instance.new("Frame")
+keyOverlay.Size = UDim2.new(0, 360 * UI_SCALE, 0, 160 * UI_SCALE)
+keyOverlay.Position = UDim2.new(0.5, -180 * UI_SCALE, 0.5, -80 * UI_SCALE)
+keyOverlay.BackgroundColor3 = Color3.fromRGB(30,30,30)
+keyOverlay.Parent = screenGui
+makeCorner(keyOverlay, 12)
+
+local keyTitle = Instance.new("TextLabel")
+keyTitle.Size = UDim2.new(1, -20 * UI_SCALE, 0, 36 * UI_SCALE)
+keyTitle.Position = UDim2.new(0, 10 * UI_SCALE, 0, 12 * UI_SCALE)
+keyTitle.BackgroundTransparency = 1
+keyTitle.Text = "Enter Key"
+keyTitle.Font = Enum.Font.GothamBold
+keyTitle.TextSize = 18 * UI_SCALE
+keyTitle.TextColor3 = Color3.fromRGB(230,230,230)
+keyTitle.Parent = keyOverlay
+
+local keyBox = Instance.new("TextBox")
+keyBox.Size = UDim2.new(1, -40 * UI_SCALE, 0, 36 * UI_SCALE)
+keyBox.Position = UDim2.new(0, 10 * UI_SCALE, 0, 58 * UI_SCALE)
+keyBox.BackgroundColor3 = Color3.fromRGB(45,45,45)
+keyBox.Text = ""
+keyBox.PlaceholderText = "Enter key..."
+keyBox.Font = Enum.Font.Gotham
+keyBox.TextSize = 16 * UI_SCALE
+keyBox.TextColor3 = Color3.fromRGB(230,230,230)
+keyBox.ClearTextOnFocus = false
+keyBox.Parent = keyOverlay
+makeCorner(keyBox, 8)
+
+local keyBtn = Instance.new("TextButton")
+keyBtn.Size = UDim2.new(0, 120 * UI_SCALE, 0, 34 * UI_SCALE)
+keyBtn.Position = UDim2.new(1, -130 * UI_SCALE, 1, -46 * UI_SCALE)
+keyBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+keyBtn.Text = "Submit"
+keyBtn.Font = Enum.Font.GothamBold
+keyBtn.TextSize = 16 * UI_SCALE
+keyBtn.TextColor3 = Color3.fromRGB(240,240,240)
+keyBtn.Parent = keyOverlay
+makeCorner(keyBtn, 8)
+
+-- Текст для ошибки
+local keyError = Instance.new("TextLabel")
+keyError.Size = UDim2.new(1, -20 * UI_SCALE, 0, 24 * UI_SCALE)
+keyError.Position = UDim2.new(0, 10 * UI_SCALE, 1, -32 * UI_SCALE)
+keyError.BackgroundTransparency = 1
+keyError.Text = ""
+keyError.Font = Enum.Font.Gotham
+keyError.TextSize = 14 * UI_SCALE
+keyError.TextColor3 = Color3.fromRGB(255,100,100)
+keyError.Parent = keyOverlay
+
+-- Анимации появления UI при старте
+mainFrame.Visible = true
+mainFrame.AnchorPoint = Vector2.new(0,0)
+mainFrame.Position = UDim2.new(0.5, -260 * UI_SCALE, 0.5, -160 * UI_SCALE)
+mainFrame.BackgroundTransparency = 1
+TweenService:Create(mainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Quad), {BackgroundTransparency = 0}):Play()
+TweenService:Create(header, TweenInfo.new(0.35, Enum.EasingStyle.Quad), {BackgroundTransparency = 0}):Play()
+
+-- Drag (плавный)
+local dragging = false
+local dragStart = Vector2.new(0,0)
+local startPos = mainFrame.Position
+local dragConnection, endDragConn
+
+local function startDrag(input)
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+    dragging = true
+    dragStart = input.Position
+    startPos = mainFrame.Position
+
+    dragConnection = UserInputService.InputChanged:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+            local delta = i.Position - dragStart
+            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+local function endDrag(input)
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+    dragging = false
+    if dragConnection then
+        dragConnection:Disconnect()
+        dragConnection = nil
+    end
+end
+
+header.InputBegan:Connect(function(input)
+    startDrag(input)
+end)
+header.InputEnded:Connect(function(input)
+    endDrag(input)
+end)
+
+-- Collapse / Expand logic
+local collapsed = false
+local originalSize = mainFrame.Size
+local originalPosition = mainFrame.Position
+
+local function collapse()
+    if collapsed then return end
+    collapsed = true
+    -- Сжать в маленькую иконку слева сверху внутри current position
+    local targetSize = UDim2.new(0, 160 * UI_SCALE, 0, 44 * UI_SCALE)
+    TweenService:Create(mainFrame, TweenInfo.new(0.28, Enum.EasingStyle.Back), {Size = targetSize}):Play()
+    -- скрыть панели постепенно
+    TweenService:Create(leftPanel, TweenInfo.new(0.18), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(rightPanel, TweenInfo.new(0.18), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(title, TweenInfo.new(0.18), {TextTransparency = 0.4}):Play()
+end
+
+local function expand()
+    if not collapsed then return end
+    collapsed = false
+    TweenService:Create(mainFrame, TweenInfo.new(0.28, Enum.EasingStyle.Back), {Size = originalSize}):Play()
+    TweenService:Create(leftPanel, TweenInfo.new(0.18), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(rightPanel, TweenInfo.new(0.18), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(title, TweenInfo.new(0.18), {TextTransparency = 0}):Play()
+end
+
+collapseBtn.MouseButton1Click:Connect(function()
+    if collapsed then expand() else collapse() end
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    -- просто спрятать главное окно
+    TweenService:Create(mainFrame, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+    wait(0.22)
+    mainFrame.Visible = false
+end)
+
+-- RightShift handler для скрытия/показа
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        if collapsed then expand() else collapse() end
+    end
+end)
+
+-- Notification (справа внизу)
+local notif = Instance.new("Frame")
+notif.Size = UDim2.new(0, 300 * UI_SCALE, 0, 48 * UI_SCALE)
+notif.Position = UDim2.new(1, -310 * UI_SCALE, 1, -68 * UI_SCALE)
+notif.BackgroundColor3 = Color3.fromRGB(28,28,28)
+notif.BorderSizePixel = 0
+notif.Parent = screenGui
+makeCorner(notif, 10)
+notif.Visible = false
+
+local notifText = Instance.new("TextLabel")
+notifText.Size = UDim2.new(1, -16 * UI_SCALE, 1, 0)
+notifText.Position = UDim2.new(0, 8 * UI_SCALE, 0, 0)
+notifText.BackgroundTransparency = 1
+notifText.Font = Enum.Font.Gotham
+notifText.TextSize = 16 * UI_SCALE
+notifText.TextColor3 = Color3.fromRGB(240,240,240)
+notifText.Text = "Your executor is not supported"
+notifText.Parent = notif
+
+-- Функция показа уведомления
+local function showNotification(txt, timeSec)
+    notifText.Text = txt or "Your executor is not supported"
+    notif.Visible = true
+    notif.BackgroundTransparency = 1
+    notifText.TextTransparency = 1
+    TweenService:Create(notif, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(notifText, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {TextTransparency = 0}):Play()
+    delay(timeSec or 3, function()
+        TweenService:Create(notif, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(notifText, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {TextTransparency = 1}):Play()
+        wait(0.19)
+        notif.Visible = false
+    end)
+end
+
+-- Inject action
+injectBtn.MouseButton1Click:Connect(function()
+    -- Показать уведомление справа внизу
+    showNotification("Your executor is not supported", 3)
+    -- Можно отправить вебхук, если нужно:
+    safeSendWebhook("Inject clicked (no action) by user.")
+end)
+
+-- Key submit logic
+local function unlockUI()
+    -- Спрятать ключевой оверлей плавно и показать mainFrame
+    TweenService:Create(keyOverlay, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+    for _, v in pairs(keyOverlay:GetChildren()) do
+        if v:IsA("TextLabel") or v:IsA("TextBox") or v:IsA("TextButton") then
+            v.TextTransparency = 1
+            TweenService:Create(v, TweenInfo.new(0.2), {TextTransparency = 0}):Play()
+        end
+    end
+    wait(0.25)
+    keyOverlay:Destroy()
+    -- small highlight animation for mainFrame
+    mainFrame.Position = UDim2.new(0.5, -260 * UI_SCALE, 0.5, -160 * UI_SCALE)
+    mainFrame.Size = UDim2.new(0, 520 * UI_SCALE, 0, 320 * UI_SCALE)
+    -- отправим в webhook что юзер успешно ввел ключ
+    safeSendWebhook("Correct key entered, UI unlocked.")
+end
+
+local function failKey()
+    keyError.Text = "Invalid key"
+    -- shake animation
+    local orig = keyOverlay.Position
+    local tweenInfo = TweenInfo.new(0.06, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, 3, true)
+    local goal = {Position = orig + UDim2.new(0, 8, 0, 0)}
+    local t = TweenService:Create(keyOverlay, tweenInfo, goal)
+    t:Play()
+    delay(0.7, function()
+        keyError.Text = ""
+    end)
+end
+
+keyBtn.MouseButton1Click:Connect(function()
+    local entered = tostring(keyBox.Text or "")
+    if entered == KEY then
+        unlockUI()
+    else
+        failKey()
+    end
+end)
+
+keyBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local entered = tostring(keyBox.Text or "")
+        if entered == KEY then
+            unlockUI()
+        else
+            failKey()
+        end
+    end
+end)
+
+-- Скрыть mainFrame пока не введён ключ (чтобы не видно было)
+mainFrame.Visible = true
+mainFrame.Modal = true
+mainFrame.BackgroundTransparency = 0
+
+-- Начальный фокус в поле ключа
+keyBox:CaptureFocus()
+
+-- Логичная подсказка: если пользователь нажмёт Escape — скрыть ключевой ввод (но не разблокировать)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.Escape then
+        if keyOverlay and keyOverlay.Parent then
+            keyOverlay:Destroy()
+        end
+    end
+end)
+
+-- Защитные проверки: если скрипт запущен не в окружении с TweenService/HttpService — всё безопасно упадёт в pcall
+-- (всё критичное уже в pcall через safeSendWebhook)
+
+-- Скрипт готов
+print("[FalseHub] UI loaded (test mode). Key is '"..KEY.."'.")
