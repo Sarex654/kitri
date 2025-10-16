@@ -1,11 +1,9 @@
--- FalseHub UI — executor-ready full script
+-- FalseHub UI — executor-ready full script with per-tab keys
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 
--- Settings
-local KEY = "123"
 local UI_SCALE = 1
 local webhookUrl = "" -- Discord webhook (оставьте "" чтобы отключить)
 
@@ -164,15 +162,93 @@ injectBtn.MouseButton1Click:Connect(function()
     showNotification("Inject executed successfully!", 3)
 end)
 
--- Buttons
+-- Buttons with keys
 local buttonsInfo = {
-    {Name="Forsaken", Desc="Forsaken — test description."},
-    {Name="Steal a Brainrot", Desc="Steal a Brainrot — test description."},
-    {Name="MM2", Desc="MM2 — test description."},
-    {Name="99 Nights", Desc="99 Nights — test description."},
+    {Name="Forsaken", Desc="Forsaken description", Key="111"},
+    {Name="Steal a Brainrot", Desc="Steal a Brainrot description", Key="222"},
+    {Name="MM2", Desc="MM2 description", Key="333"},
+    {Name="99 Nights", Desc="99 Nights description", Key="444"},
 }
 
 local leftButtons = {}
+local unlockedTabs = {}
+
+local function showKeyOverlay(tabInfo, onSuccess)
+    local overlay = Instance.new("Frame")
+    overlay.Size = UDim2.new(0,360*UI_SCALE,0,160*UI_SCALE)
+    overlay.Position = UDim2.new(0.5,-180*UI_SCALE,0.5,-80*UI_SCALE)
+    overlay.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    overlay.Parent = screenGui
+    makeCorner(overlay,12)
+    overlay.Active = true
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1,-20*UI_SCALE,0,36*UI_SCALE)
+    title.Position = UDim2.new(0,10*UI_SCALE,0,12*UI_SCALE)
+    title.BackgroundTransparency = 1
+    title.Text = "Enter key for "..tabInfo.Name
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18*UI_SCALE
+    title.TextColor3 = Color3.fromRGB(230,230,230)
+    title.Parent = overlay
+
+    local keyBox = Instance.new("TextBox")
+    keyBox.Size = UDim2.new(1,-40*UI_SCALE,0,36*UI_SCALE)
+    keyBox.Position = UDim2.new(0,10*UI_SCALE,0,58*UI_SCALE)
+    keyBox.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    keyBox.PlaceholderText = "Enter key..."
+    keyBox.Font = Enum.Font.Gotham
+    keyBox.TextSize = 16*UI_SCALE
+    keyBox.TextColor3 = Color3.fromRGB(230,230,230)
+    keyBox.ClearTextOnFocus = false
+    keyBox.Parent = overlay
+    makeCorner(keyBox,8)
+    keyBox.Active = true
+
+    local submitBtn = Instance.new("TextButton")
+    submitBtn.Size = UDim2.new(0,120*UI_SCALE,0,34*UI_SCALE)
+    submitBtn.Position = UDim2.new(1,-130*UI_SCALE,1,-46*UI_SCALE)
+    submitBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+    submitBtn.Text = "Submit"
+    submitBtn.Font = Enum.Font.GothamBold
+    submitBtn.TextSize = 16*UI_SCALE
+    submitBtn.TextColor3 = Color3.fromRGB(240,240,240)
+    submitBtn.Parent = overlay
+    makeCorner(submitBtn,8)
+    submitBtn.Active = true
+    submitBtn.AutoButtonColor = true
+
+    local keyError = Instance.new("TextLabel")
+    keyError.Size = UDim2.new(1,-20*UI_SCALE,0,24*UI_SCALE)
+    keyError.Position = UDim2.new(0,10*UI_SCALE,1,-32*UI_SCALE)
+    keyError.BackgroundTransparency = 1
+    keyError.Text = ""
+    keyError.Font = Enum.Font.Gotham
+    keyError.TextSize = 14*UI_SCALE
+    keyError.TextColor3 = Color3.fromRGB(255,100,100)
+    keyError.Parent = overlay
+
+    local function trySubmit()
+        if keyBox.Text == tabInfo.Key then
+            unlockedTabs[tabInfo.Name] = true
+            overlay:Destroy()
+            onSuccess()
+            safeSendWebhook("Tab unlocked: "..tabInfo.Name)
+        else
+            keyError.Text = "Invalid key"
+            keyBox.Text = ""
+            delay(1,function() keyError.Text="" end)
+        end
+    end
+
+    submitBtn.MouseButton1Click:Connect(trySubmit)
+    keyBox.FocusLost:Connect(function(enter)
+        if enter then trySubmit() end
+    end)
+
+    keyBox:CaptureFocus()
+end
+
 for i, info in ipairs(buttonsInfo) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1,-20*UI_SCALE,0,42*UI_SCALE)
@@ -184,169 +260,33 @@ for i, info in ipairs(buttonsInfo) do
     btn.TextColor3 = Color3.fromRGB(245,245,245)
     btn.Parent = leftPanel
     makeCorner(btn,8)
+    leftButtons[#leftButtons+1] = btn
     btn.Active = true
     btn.AutoButtonColor = true
-    btn.ZIndex = 5
-    table.insert(leftButtons,btn)
 
     btn.MouseButton1Click:Connect(function()
-        description.TextTransparency = 1
-        description.Text = info.Desc
-        TweenService:Create(description,TweenInfo.new(0.25,Enum.EasingStyle.Quad),{TextTransparency=0}):Play()
-        if not injectBtn.Visible then
+        if unlockedTabs[info.Name] then
+            description.Text = info.Desc
             injectBtn.Visible = true
-            injectBtn.TextTransparency = 1
-            TweenService:Create(injectBtn,TweenInfo.new(0.25,Enum.EasingStyle.Back),{TextTransparency=0}):Play()
-            injectBtn.BackgroundTransparency = 1
-            TweenService:Create(injectBtn,TweenInfo.new(0.25),{BackgroundTransparency=0}):Play()
+        else
+            showKeyOverlay(info,function()
+                description.Text = info.Desc
+                injectBtn.Visible = true
+            end)
         end
-        safeSendWebhook("Button pressed: "..info.Name)
     end)
 end
 
--- Key overlay
-local keyOverlay = Instance.new("Frame")
-keyOverlay.Size = UDim2.new(0,360*UI_SCALE,0,160*UI_SCALE)
-keyOverlay.Position = UDim2.new(0.5,-180*UI_SCALE,0.5,-80*UI_SCALE)
-keyOverlay.BackgroundColor3 = Color3.fromRGB(30,30,30)
-keyOverlay.Parent = screenGui
-makeCorner(keyOverlay,12)
-keyOverlay.Active = true
-
-local keyTitle = Instance.new("TextLabel")
-keyTitle.Size = UDim2.new(1,-20*UI_SCALE,0,36*UI_SCALE)
-keyTitle.Position = UDim2.new(0,10*UI_SCALE,0,12*UI_SCALE)
-keyTitle.BackgroundTransparency = 1
-keyTitle.Text = "Enter Key"
-keyTitle.Font = Enum.Font.GothamBold
-keyTitle.TextSize = 18*UI_SCALE
-keyTitle.TextColor3 = Color3.fromRGB(230,230,230)
-keyTitle.Parent = keyOverlay
-
-local keyBox = Instance.new("TextBox")
-keyBox.Size = UDim2.new(1,-40*UI_SCALE,0,36*UI_SCALE)
-keyBox.Position = UDim2.new(0,10*UI_SCALE,0,58*UI_SCALE)
-keyBox.BackgroundColor3 = Color3.fromRGB(45,45,45)
-keyBox.PlaceholderText = "Enter key..."
-keyBox.Font = Enum.Font.Gotham
-keyBox.TextSize = 16*UI_SCALE
-keyBox.TextColor3 = Color3.fromRGB(230,230,230)
-keyBox.ClearTextOnFocus = false
-keyBox.Parent = keyOverlay
-makeCorner(keyBox,8)
-keyBox.Active = true
-
-local keyBtn = Instance.new("TextButton")
-keyBtn.Size = UDim2.new(0,120*UI_SCALE,0,34*UI_SCALE)
-keyBtn.Position = UDim2.new(1,-130*UI_SCALE,1,-46*UI_SCALE)
-keyBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
-keyBtn.Text = "Submit"
-keyBtn.Font = Enum.Font.GothamBold
-keyBtn.TextSize = 16*UI_SCALE
-keyBtn.TextColor3 = Color3.fromRGB(240,240,240)
-keyBtn.Parent = keyOverlay
-makeCorner(keyBtn,8)
-keyBtn.Active = true
-keyBtn.AutoButtonColor = true
-
-local keyError = Instance.new("TextLabel")
-keyError.Size = UDim2.new(1,-20*UI_SCALE,0,24*UI_SCALE)
-keyError.Position = UDim2.new(0,10*UI_SCALE,1,-32*UI_SCALE)
-keyError.BackgroundTransparency = 1
-keyError.Text = ""
-keyError.Font = Enum.Font.Gotham
-keyError.TextSize = 14*UI_SCALE
-keyError.TextColor3 = Color3.fromRGB(255,100,100)
-keyError.Parent = keyOverlay
-
--- Notification
-local notif = Instance.new("Frame")
-notif.Size = UDim2.new(0,300*UI_SCALE,0,48*UI_SCALE)
-notif.Position = UDim2.new(1,-310*UI_SCALE,1,-68*UI_SCALE)
-notif.BackgroundColor3 = Color3.fromRGB(28,28,28)
-notif.BorderSizePixel = 0
-notif.Parent = screenGui
-makeCorner(notif,10)
-notif.Visible = false
-
-local notifText = Instance.new("TextLabel")
-notifText.Size = UDim2.new(1,-16*UI_SCALE,1,0)
-notifText.Position = UDim2.new(0,8*UI_SCALE,0,0)
-notifText.BackgroundTransparency = 1
-notifText.Font = Enum.Font.Gotham
-notifText.TextSize = 16*UI_SCALE
-notifText.TextColor3 = Color3.fromRGB(240,240,240)
-notifText.Text = "Notification"
-notifText.Parent = notif
-
-function showNotification(txt, timeSec)
-    notifText.Text = txt or "Notification"
-    notif.Visible = true
-    notif.BackgroundTransparency = 1
-    notifText.TextTransparency = 1
-    TweenService:Create(notif,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{BackgroundTransparency=0}):Play()
-    TweenService:Create(notifText,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{TextTransparency=0}):Play()
-    delay(timeSec or 3,function()
-        TweenService:Create(notif,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{BackgroundTransparency=1}):Play()
-        TweenService:Create(notifText,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{TextTransparency=1}):Play()
-        wait(0.19)
-        notif.Visible = false
-    end)
-end
-
--- Key logic
-local function unlockUI()
-    TweenService:Create(keyOverlay,TweenInfo.new(0.2),{BackgroundTransparency=1}):Play()
-    wait(0.25)
-    keyOverlay:Destroy()
-    mainFrame.Visible = true
-    safeSendWebhook("Correct key entered, UI unlocked.")
-end
-
-local function failKey()
-    keyError.Text = "Invalid key"
-    local orig = keyOverlay.Position
-    TweenService:Create(keyOverlay,TweenInfo.new(0.06,Enum.EasingStyle.Linear,Enum.EasingDirection.Out,3,true),{Position=orig+UDim2.new(0,8,0,0)}):Play()
-    delay(0.7,function() keyError.Text = "" end)
-end
-
-keyBtn.MouseButton1Click:Connect(function()
-    if keyBox.Text == KEY then unlockUI() else failKey() end
-end)
-keyBox.FocusLost:Connect(function(enter)
-    if enter then
-        if keyBox.Text == KEY then unlockUI() else failKey() end
-    end
+-- Tray toggle
+tray.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
 end)
 
-keyBox:CaptureFocus()
-
--- Drag logic (PC + mobile)
-local dragging = false
-local dragStart = Vector2.new(0,0)
-local startPos = mainFrame.Position
-header.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging=false end
-        end)
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
-    end
-end)
-
--- Collapse / Expand
-local collapsed = false
+-- Collapse/expand
+local collapsed=false
 local originalSize = mainFrame.Size
 local originalPosition = mainFrame.Position
+
 collapseBtn.MouseButton1Click:Connect(function()
     if collapsed then
         collapsed=false
@@ -357,14 +297,65 @@ collapseBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Close button
 closeBtn.MouseButton1Click:Connect(function()
-    TweenService:Create(mainFrame,TweenInfo.new(0.2),{BackgroundTransparency=1}):Play()
-    wait(0.22)
     mainFrame.Visible=false
 end)
 
--- Tray toggle
-tray.MouseButton1Click:Connect(function()
-    mainFrame.Visible = not mainFrame.Visible
-end)
+-- Drag support (mouse + touch)
+local dragging=false
+local dragInput, startPos, dragStart
+local function startDrag(input)
+    dragging=true
+    dragStart=input.Position
+    startPos=mainFrame.Position
+    input.Changed:Connect(function()
+        if input.UserInputState==Enum.UserInputState.End then dragging=false end
+    end)
+end
+
+local function updateDrag(input)
+    if dragging then
+        local delta=input.Position-dragStart
+        mainFrame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+    end
+end
+
+header.InputBegan:Connect(startDrag)
+header.InputChanged:Connect(updateDrag)
+
+-- Notifications
+local notif = Instance.new("Frame")
+notif.Size = UDim2.new(0,300*UI_SCALE,0,48*UI_SCALE)
+notif.Position = UDim2.new(1,-310*UI_SCALE,1,-68*UI_SCALE)
+notif.BackgroundColor3 = Color3.fromRGB(28,28,28)
+notif.BorderSizePixel=0
+notif.Visible=false
+notif.Parent=screenGui
+makeCorner(notif,10)
+
+local notifText = Instance.new("TextLabel")
+notifText.Size=UDim2.new(1,-16*UI_SCALE,1,0)
+notifText.Position=UDim2.new(0,8*UI_SCALE,0,0)
+notifText.BackgroundTransparency=1
+notifText.Font=Enum.Font.Gotham
+notifText.TextSize=16*UI_SCALE
+notifText.TextColor3=Color3.fromRGB(240,240,240)
+notifText.Text="Your executor is not supported"
+notifText.Parent=notif
+
+function showNotification(txt,timeSec)
+    notifText.Text=txt or "Notification"
+    notif.Visible=true
+    notif.BackgroundTransparency=1
+    notifText.TextTransparency=1
+    TweenService:Create(notif,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{BackgroundTransparency=0}):Play()
+    TweenService:Create(notifText,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{TextTransparency=0}):Play()
+    delay(timeSec or 3,function()
+        TweenService:Create(notif,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{BackgroundTransparency=1}):Play()
+        TweenService:Create(notifText,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{TextTransparency=1}):Play()
+        wait(0.19)
+        notif.Visible=false
+    end)
+end
+
+print("[FalseHub] UI loaded (per-tab keys).")
