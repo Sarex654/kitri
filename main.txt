@@ -1,38 +1,36 @@
--- FalseHub UI — полный скрипт (executor-ready)
--- Key: 123
--- Webhook (optional)
-local webhookUrl = "YOUR_WEBHOOK_URL_HERE" -- оставьте "" чтобы отключить
-
+-- FalseHub UI — executor-ready full script
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 
+-- Settings
 local KEY = "123"
 local UI_SCALE = 1
+local webhookUrl = "" -- Discord webhook (оставьте "" чтобы отключить)
 
--- safe webhook
+-- Safe webhook
 local function safeSendWebhook(text)
     if webhookUrl == nil or webhookUrl == "" then return end
     spawn(function()
         pcall(function()
-            local data = {content = text}
-            HttpService:PostAsync(webhookUrl, HttpService:JSONEncode(data), Enum.HttpContentType.ApplicationJson)
+            HttpService:PostAsync(webhookUrl, HttpService:JSONEncode({content=text}), Enum.HttpContentType.ApplicationJson)
         end)
     end)
 end
 
--- remove old GUI
+-- Remove old GUI
 for _, v in pairs(CoreGui:GetChildren()) do
     if v.Name == "FalseHub_ExecutorUI" then v:Destroy() end
 end
 
+-- ScreenGui
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "FalseHub_ExecutorUI"
 screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
 screenGui.Parent = CoreGui
 
--- helpers
 local function makeCorner(parent, radius)
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0, radius or 8)
@@ -40,30 +38,33 @@ local function makeCorner(parent, radius)
     return c
 end
 
--- tray icon (F)
+-- Tray icon
 local tray = Instance.new("TextButton")
-tray.Size = UDim2.new(0, 40*UI_SCALE, 0, 40*UI_SCALE)
-tray.Position = UDim2.new(1, -50*UI_SCALE, 1, -50*UI_SCALE)
-tray.AnchorPoint = Vector2.new(0,0)
+tray.Size = UDim2.new(0,40*UI_SCALE,0,40*UI_SCALE)
+tray.Position = UDim2.new(1,-50*UI_SCALE,1,-50*UI_SCALE)
 tray.BackgroundColor3 = Color3.fromRGB(45,45,45)
 tray.Text = "F"
 tray.Font = Enum.Font.GothamBold
 tray.TextSize = 22*UI_SCALE
 tray.TextColor3 = Color3.fromRGB(230,230,230)
 tray.Parent = screenGui
-makeCorner(tray, 20)
+makeCorner(tray,20)
+tray.Active = true
+tray.AutoButtonColor = true
 
--- main frame
+-- Main frame
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 520*UI_SCALE, 0, 320*UI_SCALE)
-mainFrame.Position = UDim2.new(0.5, -260*UI_SCALE, 0.5, -160*UI_SCALE)
+mainFrame.Size = UDim2.new(0,520*UI_SCALE,0,320*UI_SCALE)
+mainFrame.Position = UDim2.new(0.5,-260*UI_SCALE,0.5,-160*UI_SCALE)
 mainFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
+mainFrame.Active = true
+mainFrame.Selectable = true
 mainFrame.Parent = screenGui
-makeCorner(mainFrame, 14)
+makeCorner(mainFrame,14)
 
--- header
+-- Header
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1,0,0,44*UI_SCALE)
 header.BackgroundColor3 = Color3.fromRGB(30,30,30)
@@ -91,6 +92,8 @@ collapseBtn.TextSize = 20*UI_SCALE
 collapseBtn.TextColor3 = Color3.fromRGB(230,230,230)
 collapseBtn.Parent = header
 makeCorner(collapseBtn,8)
+collapseBtn.Active = true
+collapseBtn.AutoButtonColor = true
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0,34*UI_SCALE,0,30*UI_SCALE)
@@ -102,24 +105,30 @@ closeBtn.TextSize = 18*UI_SCALE
 closeBtn.TextColor3 = Color3.fromRGB(230,230,230)
 closeBtn.Parent = header
 makeCorner(closeBtn,8)
+closeBtn.Active = true
+closeBtn.AutoButtonColor = true
 
--- left panel
+-- Left panel
 local leftPanel = Instance.new("Frame")
 leftPanel.Size = UDim2.new(0,180*UI_SCALE,0,276*UI_SCALE)
 leftPanel.Position = UDim2.new(0,12*UI_SCALE,0,44*UI_SCALE+12*UI_SCALE)
 leftPanel.BackgroundColor3 = Color3.fromRGB(45,45,45)
 leftPanel.Parent = mainFrame
 makeCorner(leftPanel,12)
+leftPanel.Active = true
+leftPanel.Selectable = true
 
--- right panel
+-- Right panel
 local rightPanel = Instance.new("Frame")
 rightPanel.Size = UDim2.new(1,-(12*2+180)*UI_SCALE,0,276*UI_SCALE)
 rightPanel.Position = UDim2.new(0,12*UI_SCALE+180*UI_SCALE+12*UI_SCALE,0,44*UI_SCALE+12*UI_SCALE)
 rightPanel.BackgroundColor3 = Color3.fromRGB(50,50,50)
 rightPanel.Parent = mainFrame
 makeCorner(rightPanel,12)
+rightPanel.Active = true
+rightPanel.Selectable = true
 
--- description
+-- Description
 local description = Instance.new("TextLabel")
 description.Size = UDim2.new(1,-20*UI_SCALE,0,160*UI_SCALE)
 description.Position = UDim2.new(0,10*UI_SCALE,0,10*UI_SCALE)
@@ -133,6 +142,7 @@ description.TextXAlignment = Enum.TextXAlignment.Left
 description.TextYAlignment = Enum.TextYAlignment.Top
 description.Parent = rightPanel
 
+-- Inject button
 local injectBtn = Instance.new("TextButton")
 injectBtn.Size = UDim2.new(0,160*UI_SCALE,0,36*UI_SCALE)
 injectBtn.Position = UDim2.new(1,-170*UI_SCALE,1,-46*UI_SCALE)
@@ -144,8 +154,17 @@ injectBtn.TextColor3 = Color3.fromRGB(240,240,240)
 injectBtn.Visible = false
 injectBtn.Parent = rightPanel
 makeCorner(injectBtn,10)
+injectBtn.Active = true
+injectBtn.AutoButtonColor = true
+injectBtn.ZIndex = 5
 
--- buttons
+injectBtn.MouseButton1Click:Connect(function()
+    print("[FalseHub] Inject clicked! Execute your script here.")
+    safeSendWebhook("Inject clicked by user.")
+    showNotification("Inject executed successfully!", 3)
+end)
+
+-- Buttons
 local buttonsInfo = {
     {Name="Forsaken", Desc="Forsaken — test description."},
     {Name="Steal a Brainrot", Desc="Steal a Brainrot — test description."},
@@ -165,30 +184,34 @@ for i, info in ipairs(buttonsInfo) do
     btn.TextColor3 = Color3.fromRGB(245,245,245)
     btn.Parent = leftPanel
     makeCorner(btn,8)
+    btn.Active = true
+    btn.AutoButtonColor = true
+    btn.ZIndex = 5
     table.insert(leftButtons,btn)
 
     btn.MouseButton1Click:Connect(function()
         description.TextTransparency = 1
         description.Text = info.Desc
-        TweenService:Create(description, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {TextTransparency=0}):Play()
+        TweenService:Create(description,TweenInfo.new(0.25,Enum.EasingStyle.Quad),{TextTransparency=0}):Play()
         if not injectBtn.Visible then
             injectBtn.Visible = true
             injectBtn.TextTransparency = 1
-            TweenService:Create(injectBtn, TweenInfo.new(0.25, Enum.EasingStyle.Back), {TextTransparency=0}):Play()
+            TweenService:Create(injectBtn,TweenInfo.new(0.25,Enum.EasingStyle.Back),{TextTransparency=0}):Play()
             injectBtn.BackgroundTransparency = 1
-            TweenService:Create(injectBtn, TweenInfo.new(0.25), {BackgroundTransparency=0}):Play()
+            TweenService:Create(injectBtn,TweenInfo.new(0.25),{BackgroundTransparency=0}):Play()
         end
         safeSendWebhook("Button pressed: "..info.Name)
     end)
 end
 
--- key overlay
+-- Key overlay
 local keyOverlay = Instance.new("Frame")
 keyOverlay.Size = UDim2.new(0,360*UI_SCALE,0,160*UI_SCALE)
 keyOverlay.Position = UDim2.new(0.5,-180*UI_SCALE,0.5,-80*UI_SCALE)
 keyOverlay.BackgroundColor3 = Color3.fromRGB(30,30,30)
 keyOverlay.Parent = screenGui
 makeCorner(keyOverlay,12)
+keyOverlay.Active = true
 
 local keyTitle = Instance.new("TextLabel")
 keyTitle.Size = UDim2.new(1,-20*UI_SCALE,0,36*UI_SCALE)
@@ -211,6 +234,7 @@ keyBox.TextColor3 = Color3.fromRGB(230,230,230)
 keyBox.ClearTextOnFocus = false
 keyBox.Parent = keyOverlay
 makeCorner(keyBox,8)
+keyBox.Active = true
 
 local keyBtn = Instance.new("TextButton")
 keyBtn.Size = UDim2.new(0,120*UI_SCALE,0,34*UI_SCALE)
@@ -222,6 +246,8 @@ keyBtn.TextSize = 16*UI_SCALE
 keyBtn.TextColor3 = Color3.fromRGB(240,240,240)
 keyBtn.Parent = keyOverlay
 makeCorner(keyBtn,8)
+keyBtn.Active = true
+keyBtn.AutoButtonColor = true
 
 local keyError = Instance.new("TextLabel")
 keyError.Size = UDim2.new(1,-20*UI_SCALE,0,24*UI_SCALE)
@@ -233,7 +259,42 @@ keyError.TextSize = 14*UI_SCALE
 keyError.TextColor3 = Color3.fromRGB(255,100,100)
 keyError.Parent = keyOverlay
 
--- unlock logic
+-- Notification
+local notif = Instance.new("Frame")
+notif.Size = UDim2.new(0,300*UI_SCALE,0,48*UI_SCALE)
+notif.Position = UDim2.new(1,-310*UI_SCALE,1,-68*UI_SCALE)
+notif.BackgroundColor3 = Color3.fromRGB(28,28,28)
+notif.BorderSizePixel = 0
+notif.Parent = screenGui
+makeCorner(notif,10)
+notif.Visible = false
+
+local notifText = Instance.new("TextLabel")
+notifText.Size = UDim2.new(1,-16*UI_SCALE,1,0)
+notifText.Position = UDim2.new(0,8*UI_SCALE,0,0)
+notifText.BackgroundTransparency = 1
+notifText.Font = Enum.Font.Gotham
+notifText.TextSize = 16*UI_SCALE
+notifText.TextColor3 = Color3.fromRGB(240,240,240)
+notifText.Text = "Notification"
+notifText.Parent = notif
+
+function showNotification(txt, timeSec)
+    notifText.Text = txt or "Notification"
+    notif.Visible = true
+    notif.BackgroundTransparency = 1
+    notifText.TextTransparency = 1
+    TweenService:Create(notif,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{BackgroundTransparency=0}):Play()
+    TweenService:Create(notifText,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{TextTransparency=0}):Play()
+    delay(timeSec or 3,function()
+        TweenService:Create(notif,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{BackgroundTransparency=1}):Play()
+        TweenService:Create(notifText,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{TextTransparency=1}):Play()
+        wait(0.19)
+        notif.Visible = false
+    end)
+end
+
+-- Key logic
 local function unlockUI()
     TweenService:Create(keyOverlay,TweenInfo.new(0.2),{BackgroundTransparency=1}):Play()
     wait(0.25)
@@ -245,14 +306,13 @@ end
 local function failKey()
     keyError.Text = "Invalid key"
     local orig = keyOverlay.Position
-    TweenService:Create(keyOverlay, TweenInfo.new(0.06,Enum.EasingStyle.Linear,Enum.EasingDirection.Out,3,true), {Position=orig+UDim2.new(0,8,0,0)}):Play()
+    TweenService:Create(keyOverlay,TweenInfo.new(0.06,Enum.EasingStyle.Linear,Enum.EasingDirection.Out,3,true),{Position=orig+UDim2.new(0,8,0,0)}):Play()
     delay(0.7,function() keyError.Text = "" end)
 end
 
 keyBtn.MouseButton1Click:Connect(function()
     if keyBox.Text == KEY then unlockUI() else failKey() end
 end)
-
 keyBox.FocusLost:Connect(function(enter)
     if enter then
         if keyBox.Text == KEY then unlockUI() else failKey() end
@@ -260,3 +320,51 @@ keyBox.FocusLost:Connect(function(enter)
 end)
 
 keyBox:CaptureFocus()
+
+-- Drag logic (PC + mobile)
+local dragging = false
+local dragStart = Vector2.new(0,0)
+local startPos = mainFrame.Position
+header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging=false end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+    end
+end)
+
+-- Collapse / Expand
+local collapsed = false
+local originalSize = mainFrame.Size
+local originalPosition = mainFrame.Position
+collapseBtn.MouseButton1Click:Connect(function()
+    if collapsed then
+        collapsed=false
+        TweenService:Create(mainFrame,TweenInfo.new(0.28,Enum.EasingStyle.Back),{Size=originalSize}):Play()
+    else
+        collapsed=true
+        TweenService:Create(mainFrame,TweenInfo.new(0.28,Enum.EasingStyle.Back),{Size=UDim2.new(0,160*UI_SCALE,0,44*UI_SCALE)}):Play()
+    end
+end)
+
+-- Close button
+closeBtn.MouseButton1Click:Connect(function()
+    TweenService:Create(mainFrame,TweenInfo.new(0.2),{BackgroundTransparency=1}):Play()
+    wait(0.22)
+    mainFrame.Visible=false
+end)
+
+-- Tray toggle
+tray.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+end)
